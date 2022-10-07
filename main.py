@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import sys
+import traceback
+from string import hexdigits
+
 import curses
 from pygdbmi.gdbcontroller import GdbController
-import traceback
 
 NUM_ROW_BYTES = 16
 BYTE_SPACING = 4
@@ -81,20 +83,14 @@ def handle_input(stdscr, memory):
     elif c == curses.KEY_DOWN and y != max_y - 1:
         stdscr.move(y + 1, x)
     elif c == curses.KEY_LEFT and x != LEFT_OFFSET:
-        if digit == 0:
-            shift = BYTE_SPACING - 1
-        else:
-            shift = 1
+        shift = BYTE_SPACING - 1 if digit == 0 else 1
         stdscr.move(y, x - shift)
     elif c == curses.KEY_RIGHT and (
         offset % NUM_ROW_BYTES != NUM_ROW_BYTES - 1 or digit != 1
     ):
-        if digit == 0:
-            shift = 1
-        else:
-            shift = BYTE_SPACING - 1
+        shift = 1 if digit == 0 else BYTE_SPACING - 1
         stdscr.move(y, x + shift)
-    elif (c >= ord('0') and c <= ord('9')) or (c >= ord('a') and c <= ord('f')):
+    elif c in hexdigits:
         stdscr.addch(chr(c))
 
         # The cursor automatically moves forward, we need to move it
@@ -115,10 +111,7 @@ def handle_input(stdscr, memory):
         memory[offset] = new_val
 
         if offset % NUM_ROW_BYTES != NUM_ROW_BYTES - 1 or digit != 1:
-            if digit == 0:
-                shift = 1
-            else:
-                shift = BYTE_SPACING - 1
+            shift = 1 if digit == 0 else BYTE_SPACING - 1
             stdscr.move(y, x + shift)
 
     return True
@@ -176,9 +169,7 @@ def gdb_cmd(cmd):
         if res['type'] == 'result' and res['message'] == 'error':
             log(res)
             raise Exception(res)
-        elif res['type'] == 'console':
-            log(res['payload'])
-        elif res['type'] == 'log':
+        elif res['type'] in ('console', 'log'):
             log(res['payload'])
 
     return response
